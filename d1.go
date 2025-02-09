@@ -24,17 +24,171 @@ type ListD1Response struct {
 	Result []D1Database `json:"result"`
 }
 
-func D1Init(CFAPIKEY string, CFEMAIL string, CFACCOUNTID string, CFDBNAME string) (err error) {
+// 最小限
+type PostQueryParams struct {
+	SQL   string   `json:"sql"`
+	PARAM []string `json:"params"`
+}
+type CreateD1DatabaseParams struct {
+	Name string `json:"name"`
+}
+type Success struct {
+}
+type Error struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+}
+type Message struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+}
+type CreateDatabaseResponse struct {
+	Result   D1Database `json:"result"`
+	Errors   []Error    `json:"errors"`
+	Messages []Message  `json:"messages"`
+	Success  bool       `json:"success"`
+}
+type QueryResponse struct {
+	ERRORS   []Error   `json:"errors"`
+	MESSAGES []Message `json:"messages"`
+	SUCCESS  bool      `json:"success"`
+}
+
+func PostQuery(client *http.Client, query string, CFACCOUNTID string, CFEMAIL string, CFAPIKEY string, CFDBNAME string, CFDBID string) error {
+	reqBody := PostQueryParams{SQL: query}
+
+	reqBodyJson, err := json.Marshal(reqBody)
+	if err != nil {
+		log.Fatal("Failed to create requiest param")
+		return err
+	}
+
+	req, err := http.NewRequest("POST", fmt.Sprintf("https://api.cloudflare.com/client/v4/accounts/%s/d1/database/%s/query", CFACCOUNTID, CFDBID), bytes.NewBuffer(reqBodyJson))
+	if err != nil {
+		log.Fatal("Failed to Create Request Param for Create Table", err)
+		return err
+	}
+
+	header := http.Header{}
+	header.Add("Content-Type", "application/json")
+	header.Add("X-Auth-Email", CFEMAIL)
+	header.Add("X-Auth-Key", CFAPIKEY)
+	req.Header = header
+
+	res, err := client.Do(req)
+	if err != nil {
+		log.Fatal("Failed to Post for Create Table")
+		return err
+	}
+
+	defer res.Body.Close()
+
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return err
+	}
+	var result QueryResponse
+	if err := json.Unmarshal([]byte(body), &result); err != nil {
+		return err
+	}
+	if !result.SUCCESS {
+		log.Fatal("Failed to Post Query, query:", query)
+	}
+
+	return nil
+}
+
+func D1Init(CFAPIKEY string, CFEMAIL string, CFACCOUNTID string, CFDBNAME string) (string, error) {
 	client := &http.Client{}
-
 	client.Timeout = time.Second * 15
+	CFDBID, err := findDBID(client, CFACCOUNTID, CFEMAIL, CFAPIKEY, CFDBNAME)
+	if err != nil {
+		log.Fatal("Failed to Find DBID")
+		return "", err
+	}
 
+	// データベースがなければ作る
+	if CFDBID == "" {
+		log.Println("Cloudflare D1 has no Database, so create now")
+		err := createD1Database(client, CFACCOUNTID, CFEMAIL, CFAPIKEY, CFDBNAME)
+		if err != nil {
+			log.Fatal("Failed to Create Database", err)
+			return "", err
+		}
+
+		CFDBID, err = findDBID(client, CFACCOUNTID, CFEMAIL, CFAPIKEY, CFDBNAME)
+		if err != nil {
+			log.Fatal("Failed to Find DBID", err)
+			return "", err
+		}
+		if CFDBID == "" {
+			log.Fatal("Failed to Find DBID2", err)
+			return "", errors.New("Failed to Find DBID2")
+		}
+
+		createTableQuery := "CREATE TABLE MESSAGE (ID INTEGER PRIMARY KEY, MessageID TEXT, AuthorID TEXT, MessageCreatedAT TEXT, Created_AT TEXT, Updated_AT TEXT)"
+		err = PostQuery(client, createTableQuery, CFACCOUNTID, CFEMAIL, CFAPIKEY, CFDBNAME, CFDBID)
+		if err != nil {
+			log.Fatal("Failed to Create Table", err)
+			return "", err
+		}
+	}
+
+	return CFDBID, nil
+}
+
+func findDBID(client *http.Client, CFACCOUNTID string, CFEMAIL string, CFAPIKEY string, CFDBNAME string) (string, error) {
 	header := http.Header{}
 	header.Add("X-Auth-Email", CFEMAIL)
 	header.Add("X-Auth-Key", CFAPIKEY)
 
 	req, err := http.NewRequest("GET", fmt.Sprintf("https://api.cloudflare.com/client/v4/accounts/%s/d1/database", CFACCOUNTID), nil)
 	if err != nil {
+		return "", err
+	}
+	req.Header = header
+
+	res, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer res.Body.Close()
+
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return "", err
+	}
+	var result ListD1Response
+	if err := json.Unmarshal([]byte(body), &result); err != nil {
+		return "", err
+	}
+
+	CFDBID := ""
+	for _, v := range result.Result {
+		if v.Name == CFDBNAME {
+			CFDBID = v.UUID
+			break
+		}
+	}
+	return CFDBID, nil
+}
+
+func createD1Database(client *http.Client, CFACCOUNTID string, CFEMAIL string, CFAPIKEY string, CFDBNAME string) error {
+	header := http.Header{}
+	header.Add("Content-Type", "application/json")
+	header.Add("X-Auth-Email", CFEMAIL)
+	header.Add("X-Auth-Key", CFAPIKEY)
+
+	reqBody := CreateD1DatabaseParams{Name: CFDBNAME}
+	reqBodyJson, err := json.Marshal(reqBody)
+	if err != nil {
+		log.Fatal("Failed to create request body json")
+		return err
+	}
+
+	req, err := http.NewRequest("POST", fmt.Sprintf("https://api.cloudflare.com/client/v4/accounts/%s/d1/database", CFACCOUNTID), bytes.NewBuffer(reqBodyJson))
+	if err != nil {
+		log.Fatal("Failed to create requiest param")
 		return err
 	}
 	req.Header = header
@@ -49,81 +203,15 @@ func D1Init(CFAPIKEY string, CFEMAIL string, CFACCOUNTID string, CFDBNAME string
 	if err != nil {
 		return err
 	}
-  var result ListD1Response
-  if err := json.Unmarshal([]byte(body), &result); err != nil {
-    return err
-  }
-  
-  var isThere = false
-  for _, v := range(result.Result) {
-    if v.Name == CFDBNAME {
-      isThere = true
-      break
-    }
-  }
-  if !isThere {
-    log.Println("Cloudflare D1 has no Database, so create now")
-    err := createD1Database(client, CFACCOUNTID, CFEMAIL, CFAPIKEY, CFDBNAME)
-    if err != nil {
-      log.Fatal("Failed to Create Database", err)
-      return err
-    }
-  }
-  return nil
-}
-
-type CreateD1DatabaseParams struct {
-	Name string `json:"name"`
-}
-type Success struct {
-}
-type Error struct {
-  Code int `json:"code"`
-  Message string `json:"message"`
-}
-type Message struct {
-  Code int `json:"code"`
-  Message string `json:"message"`
-}
-type CreateDatabaseResponse struct {
-	Result D1Database `json:"result"`
-  Errors []Error `json:"errors"`
-  Messages []Message `json:"messages"`
-  Success bool `json:"success"`
-}
-func createD1Database(client *http.Client, CFACCOUNTID string, CFEMAIL string, CFAPIKEY string, CFDBNAME string) (err error) {
-  header := http.Header{}
-  header.Add("Content-Type", "application/json")
-  header.Add("X-Auth-Email", CFEMAIL)
-  header.Add("X-Auth-Key", CFAPIKEY)
-  reqBody := CreateD1DatabaseParams{Name: CFDBNAME}
-  reqBodyJson, err := json.Marshal(reqBody)
-  if err != nil {
-    log.Fatal("Failed to create request body json")
-    return err
-  }
-  req, err := http.NewRequest("POST", fmt.Sprintf("https://api.cloudflare.com/client/v4/accounts/%s/d1/database", CFACCOUNTID), bytes.NewBuffer(reqBodyJson))
-  req.Header = header
-  
-  res, err := client.Do(req)
-  if err != nil {
+	var result CreateDatabaseResponse
+	if err := json.Unmarshal([]byte(body), &result); err != nil {
+		log.Fatal("Failed to Unmarshal result")
 		return err
 	}
-	defer res.Body.Close()
-
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		return err
+	if !result.Success {
+		log.Fatal("Failed to Create Database")
+		return errors.New("Failed to Create Database")
 	}
-  var result CreateDatabaseResponse
-  if err := json.Unmarshal([]byte(body), &result); err != nil {
-    log.Fatal("Failed to Unmarshal result")
-    return err
-  }
-  if !result.Success {
-    log.Fatal("Failed to Create Database")
-    return errors.New("Failed to Create Database")
-  }
-  log.Println("Complete to Create Database")
-  return nil
+	log.Println("Complete to Create Database")
+	return nil
 }

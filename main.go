@@ -40,9 +40,10 @@ func main() {
 	CFACCOUNTID := os.Getenv("CLOUDFLARE_ACCOUNT_ID")
 	CFACCOUNTEMAIL := os.Getenv("CLOUDFLARE_ACCOUNT_EMAIL")
 	CFAPIKEY := os.Getenv("CLOUDFLARE_API_KEY")
-  CFDBNAME := os.Getenv("CLOUDFLARE_D1_DATABASE_NAME")
-
-	err = D1Init(CFAPIKEY, CFACCOUNTEMAIL, CFACCOUNTID, CFDBNAME)
+	CFDBNAME := os.Getenv("CLOUDFLARE_D1_DATABASE_NAME")
+	DBID := ""
+	DBID, err = D1Init(CFAPIKEY, CFACCOUNTEMAIL, CFACCOUNTID, CFDBNAME)
+	fmt.Print(DBID)
 	if err != nil {
 		log.Fatalln("Failed to D1 Database initialized:", err)
 	}
@@ -74,19 +75,29 @@ func handleInteraction(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	if i.Type == discordgo.InteractionApplicationCommand {
 		switch i.ApplicationCommandData().Name {
 		case "pin":
-			pin(s, i, logChannelID)
+			err := pin(s, i, logChannelID)
+			if err != nil {
+				log.Fatal("Failed to pin,", err)
+			}
 		}
 	}
 }
 
-func pin(s *discordgo.Session, i *discordgo.InteractionCreate, logChannelID string) {
+func pin(s *discordgo.Session, i *discordgo.InteractionCreate, logChannelID string) error {
 	msgContent := i.ApplicationCommandData().Resolved.Messages[i.ApplicationCommandData().TargetID].Content
 	msgAuthor := i.ApplicationCommandData().Resolved.Messages[i.ApplicationCommandData().TargetID].Author.Username
 	msgAttachments := i.ApplicationCommandData().Resolved.Messages[i.ApplicationCommandData().TargetID].Attachments
+	msgID := i.ApplicationCommandData().Resolved.Messages[i.ApplicationCommandData().TargetID].ID
+	msgCreatedAt, err := discordgo.SnowflakeTimestamp(msgID)
+	log.Panicln("msg created at:", msgCreatedAt)
+	if err != nil {
+		return err
+	}
+
 	responseContent := fmt.Sprintf("ピン留めしました: %s", msgContent)
 	sendLog(s, logChannelID, msgContent, msgAuthor, msgAttachments)
 
-	err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
 			Content: responseContent,
@@ -95,6 +106,7 @@ func pin(s *discordgo.Session, i *discordgo.InteractionCreate, logChannelID stri
 	if err != nil {
 		log.Printf("Failed to respond to interaction: %v", err)
 	}
+	return nil
 }
 
 func registerContextMenu(s *discordgo.Session, guildID string) {
