@@ -55,6 +55,23 @@ type QueryResponse struct {
 }
 
 func PostQuery(client *http.Client, query string, CFACCOUNTID string, CFEMAIL string, CFAPIKEY string, CFDBNAME string, CFDBID string) error {
+  if (CFACCOUNTID == "") {
+    log.Fatal("CFACCOUNTID is Empty")
+    return errors.New("CFACCOUNTID is Empty P")
+  }
+  if (CFEMAIL == "") {
+    log.Fatal("CFEMAIL is Empty P")
+  }
+  if (CFAPIKEY == "") {
+    log.Fatal("CFAPIKEY is Empty P")
+  }
+  if (CFDBNAME == "") {
+    log.Fatal("CFDBNAME is Empty P")
+  }
+  if (CFDBID == "") {
+    log.Fatal("CFDBID is Empty P")
+  }
+
 	reqBody := PostQueryParams{SQL: query}
 
 	reqBodyJson, err := json.Marshal(reqBody)
@@ -93,6 +110,7 @@ func PostQuery(client *http.Client, query string, CFACCOUNTID string, CFEMAIL st
 	}
 	if !result.SUCCESS {
 		log.Fatal("Failed to Post Query, query:", query)
+    //log.Fatalf("AccountID:%s, CFEMAIL:%s, CFAPIKEY:%s, CFDBNAME:%s, CFDBID:%s", CFACCOUNTID, CFEMAIL, CFAPIKEY, CFDBNAME, CFDBID)
 	}
 
 	return nil
@@ -126,7 +144,7 @@ func D1Init(CFAPIKEY string, CFEMAIL string, CFACCOUNTID string, CFDBNAME string
 			return "", errors.New("Failed to Find DBID2")
 		}
 
-		createTableQuery := "CREATE TABLE MESSAGE (ID INTEGER PRIMARY KEY, MessageID TEXT, AuthorID TEXT, MessageCreatedAT TEXT, Created_AT TEXT, Updated_AT TEXT)"
+		createTableQuery := "CREATE TABLE MESSAGE (ID INTEGER PRIMARY KEY AUTOINCREMENT, MessageID TEXT, AuthorID TEXT, MessageCreatedAT TEXT, CreatedAT TEXT, UpdatedAT TEXT)"
 		err = PostQuery(client, createTableQuery, CFACCOUNTID, CFEMAIL, CFAPIKEY, CFDBNAME, CFDBID)
 		if err != nil {
 			log.Fatal("Failed to Create Table", err)
@@ -135,6 +153,23 @@ func D1Init(CFAPIKEY string, CFEMAIL string, CFACCOUNTID string, CFDBNAME string
 	}
 
 	return CFDBID, nil
+}
+
+func RecordMessage(CFDBID string, CFAPIKEY string, CFEMAIL string, CFACCOUNTID string, CFDBNAME string, MessageID string, AuthorID string, MessageCreatedAT time.Time) error {
+    client := &http.Client{}
+    client.Timeout = time.Second * 15
+    layout := "2006-01-02 15:04:05"
+    currentTime := time.Now().Format(layout)
+    // MessageCreatedATも文字列に変換
+    msgCreatedAtStr := MessageCreatedAT.Format(layout)
+    // CFMAXID = CFMAXID + 1
+    query := fmt.Sprintf("INSERT INTO MESSAGE (MessageID, AuthorID, MessageCreatedAT, CreatedAT, UpdatedAT) VALUES ('%s', '%s', '%s', '%s', '%s')", MessageID, AuthorID, msgCreatedAtStr, currentTime, currentTime)
+    err := PostQuery(client, query, CFACCOUNTID, CFEMAIL, CFAPIKEY, CFDBNAME, CFDBID)
+    if err != nil {
+        log.Fatal("Failed to Record Message Query")
+        return err
+    }
+    return nil
 }
 
 func findDBID(client *http.Client, CFACCOUNTID string, CFEMAIL string, CFAPIKEY string, CFDBNAME string) (string, error) {

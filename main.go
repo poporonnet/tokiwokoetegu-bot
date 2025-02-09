@@ -2,11 +2,19 @@ package main
 
 import (
 	"fmt"
-	"github.com/bwmarrin/discordgo"
-	"github.com/joho/godotenv"
 	"log"
 	"os"
+
+	"github.com/bwmarrin/discordgo"
+	"github.com/joho/godotenv"
 )
+
+var CFACCOUNTID string = ""
+var CFEMAIL string = ""
+var CFAPIKEY string = ""
+var CFDBNAME string = ""
+var CFDBID = ""
+var CFMAXID = 0
 
 func main() {
 	// TOKEN, err := os.LookupEnv("DISCORD_TOKEN")
@@ -20,7 +28,6 @@ func main() {
 		log.Fatal("Token is Empty")
 	}
 	GuildID := os.Getenv("DISCORD_GUILD_ID")
-
 	discord, err := discordgo.New("Bot " + TOKEN)
 
 	if err != nil {
@@ -28,6 +35,15 @@ func main() {
 		return
 	}
 
+	CFACCOUNTID = os.Getenv("CLOUDFLARE_ACCOUNT_ID")
+	CFEMAIL = os.Getenv("CLOUDFLARE_ACCOUNT_EMAIL")
+	CFAPIKEY = os.Getenv("CLOUDFLARE_API_KEY")
+	CFDBNAME = os.Getenv("CLOUDFLARE_D1_DATABASE_NAME")
+	CFDBID, err = D1Init(CFAPIKEY, CFEMAIL, CFACCOUNTID, CFDBNAME)
+	fmt.Print(CFDBID)
+	if err != nil {
+		log.Fatalln("Failed to D1 Database initialized:", err)
+	}
 	discord.AddHandler(handleInteraction)
 	err = discord.Open()
 	if err != nil {
@@ -36,18 +52,6 @@ func main() {
 	}
 
 	registerContextMenu(discord, GuildID)
-
-	CFACCOUNTID := os.Getenv("CLOUDFLARE_ACCOUNT_ID")
-	CFACCOUNTEMAIL := os.Getenv("CLOUDFLARE_ACCOUNT_EMAIL")
-	CFAPIKEY := os.Getenv("CLOUDFLARE_API_KEY")
-	CFDBNAME := os.Getenv("CLOUDFLARE_D1_DATABASE_NAME")
-	DBID := ""
-	DBID, err = D1Init(CFAPIKEY, CFACCOUNTEMAIL, CFACCOUNTID, CFDBNAME)
-	fmt.Print(DBID)
-	if err != nil {
-		log.Fatalln("Failed to D1 Database initialized:", err)
-	}
-
 	fmt.Println("Bot is now running. Press CTRL+C to exit.")
 
 	select {} // Wait indefinitely.
@@ -89,12 +93,18 @@ func pin(s *discordgo.Session, i *discordgo.InteractionCreate, logChannelID stri
 	msgAttachments := i.ApplicationCommandData().Resolved.Messages[i.ApplicationCommandData().TargetID].Attachments
 	msgID := i.ApplicationCommandData().Resolved.Messages[i.ApplicationCommandData().TargetID].ID
 	msgCreatedAt, err := discordgo.SnowflakeTimestamp(msgID)
-	log.Panicln("msg created at:", msgCreatedAt)
 	if err != nil {
 		return err
 	}
 
 	responseContent := fmt.Sprintf("ピン留めしました: %s", msgContent)
+
+	err = RecordMessage(CFDBID, CFAPIKEY, CFEMAIL, CFACCOUNTID, CFDBNAME, msgID, msgAuthor, msgCreatedAt)
+	if err != nil {
+		log.Fatal("Failed Record Message")
+		return err
+	}
+
 	sendLog(s, logChannelID, msgContent, msgAuthor, msgAttachments)
 
 	err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
