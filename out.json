@@ -1,0 +1,48 @@
+{
+  "result": [
+    {
+      "uuid": "0603e4b2-f3ff-4c5d-b012-b47f666a8510",
+      "name": "coc-chan",
+      "created_at": "2025-02-09T13:31:16.597Z",
+      "version": "production",
+      "num_tables": 0,
+      "file_size": 12288
+    },
+    {
+      "uuid": "501c040c-94d6-43fa-b21b-91934e347da8",
+      "name": "hono-test",
+      "created_at": "2024-11-01T14:49:51.355Z",
+      "version": "production",
+      "num_tables": null,
+      "file_size": null
+    },
+    {
+      "uuid": "2faae47c-585d-48bf-b502-f80af2b469fd",
+      "name": "SAMPLE_DB",
+      "created_at": "2024-04-08T20:30:26.518Z",
+      "version": "production",
+      "num_tables": 0,
+      "file_size": 12288
+    },
+    {
+      "uuid": "fb0d0e9f-6b14-4d70-849d-05aeaf93c543",
+      "name": "remix",
+      "created_at": "2024-04-02T11:13:09.833Z",
+      "version": "production",
+      "num_tables": 0,
+      "file_size": 12288
+    },
+    {
+      "uuid": "a61357a8-4a23-400e-926f-215160391d1c",
+      "name": "d1_databases",
+      "created_at": "2024-03-04T16:06:40.100Z",
+      "version": "production",
+      "num_tables": 0,
+      "file_size": 12288
+    }
+  ],
+  "errors": [],
+  "messages": [],
+  "success": true,
+  "result_info": { "count": 5, "page": 1, "per_page": 100, "total_count": 5 }
+}

@@ -2,11 +2,10 @@ package main
 
 import (
 	"fmt"
-	"log"
-	"os"
-
 	"github.com/bwmarrin/discordgo"
 	"github.com/joho/godotenv"
+	"log"
+	"os"
 )
 
 func main() {
@@ -37,6 +36,16 @@ func main() {
 	}
 
 	registerContextMenu(discord, GuildID)
+
+	CFACCOUNTID := os.Getenv("CLOUDFLARE_ACCOUNT_ID")
+	CFACCOUNTEMAIL := os.Getenv("CLOUDFLARE_ACCOUNT_EMAIL")
+	CFAPIKEY := os.Getenv("CLOUDFLARE_API_KEY")
+  CFDBNAME := os.Getenv("CLOUDFLARE_D1_DATABASE_NAME")
+
+	err = D1Init(CFAPIKEY, CFACCOUNTEMAIL, CFACCOUNTID, CFDBNAME)
+	if err != nil {
+		log.Fatalln("Failed to D1 Database initialized:", err)
+	}
 
 	fmt.Println("Bot is now running. Press CTRL+C to exit.")
 
