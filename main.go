@@ -14,7 +14,6 @@ var CFEMAIL string = ""
 var CFAPIKEY string = ""
 var CFDBNAME string = ""
 var CFDBID = ""
-var CFMAXID = 0
 
 func main() {
 	// TOKEN, err := os.LookupEnv("DISCORD_TOKEN")
@@ -39,6 +38,7 @@ func main() {
 	CFEMAIL = os.Getenv("CLOUDFLARE_ACCOUNT_EMAIL")
 	CFAPIKEY = os.Getenv("CLOUDFLARE_API_KEY")
 	CFDBNAME = os.Getenv("CLOUDFLARE_D1_DATABASE_NAME")
+	BUCKETNAME := os.Getenv("CLOUDFLARE_R2_BUCKET_NAME")
 	CFDBID, err = D1Init(CFAPIKEY, CFEMAIL, CFACCOUNTID, CFDBNAME)
 	fmt.Print(CFDBID)
 	if err != nil {
@@ -47,13 +47,17 @@ func main() {
 	discord.AddHandler(handleInteraction)
 	err = discord.Open()
 	if err != nil {
-		fmt.Println("Error opening connection,", err)
-		return
+		log.Fatal("Error opening connection,", err)
+	}
+
+	err = R2Init(CFACCOUNTID, CFEMAIL, CFAPIKEY, BUCKETNAME)
+	if err != nil {
+		log.Fatal("Failed to R2 Bucket initialized:", err)
 	}
 
 	registerContextMenu(discord, GuildID)
-	fmt.Println("Bot is now running. Press CTRL+C to exit.")
 
+	fmt.Println("Bot is now running. Press CTRL+C to exit.")
 	select {} // Wait indefinitely.
 }
 

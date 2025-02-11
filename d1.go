@@ -162,7 +162,6 @@ func RecordMessage(CFDBID string, CFAPIKEY string, CFEMAIL string, CFACCOUNTID s
     currentTime := time.Now().Format(layout)
     // MessageCreatedATも文字列に変換
     msgCreatedAtStr := MessageCreatedAT.Format(layout)
-    // CFMAXID = CFMAXID + 1
     query := fmt.Sprintf("INSERT INTO MESSAGE (MessageID, AuthorID, MessageCreatedAT, CreatedAT, UpdatedAT) VALUES ('%s', '%s', '%s', '%s', '%s')", MessageID, AuthorID, msgCreatedAtStr, currentTime, currentTime)
     err := PostQuery(client, query, CFACCOUNTID, CFEMAIL, CFAPIKEY, CFDBNAME, CFDBID)
     if err != nil {
