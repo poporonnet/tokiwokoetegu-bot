@@ -3,6 +3,7 @@ package discord
 import (
 	"fmt"
 	"log"
+	"strings"
 	"tokiwokoetegu-bot/cloudflare"
 	"tokiwokoetegu-bot/types"
 
@@ -36,13 +37,8 @@ func InitDiscord(config *types.Config) (*discordgo.Session, error) {
 }
 
 // sendLog はログチャンネルにメッセージを送信する
-func sendLog(s *discordgo.Session, channelID string, content string, author string, attachments []*discordgo.MessageAttachment) error {
-	attachmentUrls := ""
-	for _, v := range attachments {
-		attachmentUrls = fmt.Sprintf("%s%s\n", attachmentUrls, v.URL)
-	}
-
-	logMessage := fmt.Sprintf("from:%s\n%s\n%s", author, content, attachmentUrls)
+func sendLog(s *discordgo.Session, channelID string, content string, author string, attachments string) error {
+	logMessage := fmt.Sprintf("from:%s\n%s\n%s", author, content, attachments)
 	_, err := s.ChannelMessageSend(channelID, logMessage)
 	if err != nil {
 		return fmt.Errorf("ログチャンネルへのメッセージ送信に失敗しました: %w", err)
@@ -70,10 +66,15 @@ func handleInteraction(s *discordgo.Session, i *discordgo.InteractionCreate, con
 func handlePin(s *discordgo.Session, i *discordgo.InteractionCreate, config *types.Config) error {
 	msgData := i.ApplicationCommandData().Resolved.Messages[i.ApplicationCommandData().TargetID]
 	msgContent := msgData.Content
-	msgAuthor := msgData.Author.Username
+	msgAuthorName := msgData.Author.Username
+	msgAuthorID := msgData.Author.ID
 	msgAttachments := msgData.Attachments
 	msgID := msgData.ID
-
+	msgAttachmentURLs := make([]string, 0, len(msgAttachments))
+	for _, v := range msgAttachments {
+		msgAttachmentURLs = append(msgAttachmentURLs, v.URL)
+	}
+	msgAttachmentURLsStr := strings.Join(msgAttachmentURLs, ",")
 	msgCreatedAt, err := discordgo.SnowflakeTimestamp(msgID)
 	if err != nil {
 		return fmt.Errorf("メッセージ作成時間の解析に失敗しました: %w", err)
@@ -81,13 +82,13 @@ func handlePin(s *discordgo.Session, i *discordgo.InteractionCreate, config *typ
 
 	// D1データベースに記録
 	cfConfig := &config.CloudflareConfig
-	err = cloudflare.RecordMessage(cfConfig.DBID, cfConfig.APIKey, cfConfig.Email, cfConfig.AccountID, cfConfig.DBName, msgID, msgAuthor, msgCreatedAt)
+	err = cloudflare.RecordMessage(cfConfig.DBID, cfConfig.APIKey, cfConfig.Email, cfConfig.AccountID, cfConfig.DBName, msgID, msgAuthorID, msgContent, msgAttachmentURLsStr, msgCreatedAt)
 	if err != nil {
 		return fmt.Errorf("メッセージのデータベース記録に失敗しました: %w", err)
 	}
 
 	// ログチャンネルに送信
-	err = sendLog(s, config.LogChannelID, msgContent, msgAuthor, msgAttachments)
+	err = sendLog(s, config.LogChannelID, msgContent, msgAuthorName, msgAttachmentURLsStr)
 	if err != nil {
 		return fmt.Errorf("ログの送信に失敗しました: %w", err)
 	}

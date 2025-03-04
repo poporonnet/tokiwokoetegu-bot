@@ -173,11 +173,13 @@ func D1Init(apiKey, email, accountID, dbName string) (string, error) {
 		// テーブルの作成
 		createTableQuery := `
 			CREATE TABLE MESSAGE (
-				ID INTEGER PRIMARY KEY AUTOINCREMENT, 
-				MessageID TEXT, 
-				AuthorID TEXT, 
-				MessageCreatedAT TEXT, 
-				CreatedAT TEXT, 
+				ID INTEGER PRIMARY KEY AUTOINCREMENT,
+				MessageID TEXT,
+				MessageContent TEXT,
+				Attachments TEXT,
+				AuthorID TEXT,
+				MessageCreatedAT TEXT,
+				CreatedAT TEXT,
 				UpdatedAT TEXT
 			)
 		`
@@ -193,7 +195,7 @@ func D1Init(apiKey, email, accountID, dbName string) (string, error) {
 	return dbID, nil
 }
 
-func RecordMessage(dbID, apiKey, email, accountID, dbName, messageID, authorID string, messageCreatedAT time.Time) error {
+func RecordMessage(dbID, apiKey, email, accountID, dbName, messageID, authorID, messageContent, attachmentUrls string, messageCreatedAT time.Time) error {
 	api, err := NewCloudflareAPI(accountID, email, apiKey, dbName)
 	if err != nil {
 		return fmt.Errorf("Cloudflare API クライアントの初期化に失敗しました: %w", err)
@@ -206,8 +208,8 @@ func RecordMessage(dbID, apiKey, email, accountID, dbName, messageID, authorID s
 	msgCreatedAtStr := messageCreatedAT.Format(layout)
 
 	query := fmt.Sprintf(
-		"INSERT INTO MESSAGE (MessageID, AuthorID, MessageCreatedAT, CreatedAT, UpdatedAT) VALUES ('%s', '%s', '%s', '%s', '%s')",
-		messageID, authorID, msgCreatedAtStr, currentTime, currentTime,
+		"INSERT INTO MESSAGE (MessageID, AuthorID, MessageContent, Attachments, MessageCreatedAT, CreatedAT, UpdatedAT) VALUES ('%s', '%s', '%s', '%s', '%s', '%s', '%s')",
+		messageID, messageContent, attachmentUrls, authorID, msgCreatedAtStr, currentTime, currentTime,
 	)
 
 	err = api.PostQuery(query)
