@@ -195,30 +195,6 @@ func D1Init(apiKey, email, accountID, dbName string) (string, error) {
 	return dbID, nil
 }
 
-func RecordMessage(dbID, apiKey, email, accountID, dbName, messageID, authorID, messageContent, attachmentUrls string, messageCreatedAT time.Time) error {
-	api, err := NewCloudflareAPI(accountID, email, apiKey, dbName)
-	if err != nil {
-		return fmt.Errorf("Cloudflare API クライアントの初期化に失敗しました: %w", err)
-	}
-
-	api.DBID = dbID
-
-	layout := "2006-01-02 15:04:05"
-	currentTime := time.Now().Format(layout)
-	msgCreatedAtStr := messageCreatedAT.Format(layout)
-
-	query := fmt.Sprintf(
-		"INSERT INTO MESSAGE (MessageID, AuthorID, MessageContent, Attachments, MessageCreatedAT, CreatedAT, UpdatedAT) VALUES ('%s', '%s', '%s', '%s', '%s', '%s', '%s')",
-		messageID, messageContent, attachmentUrls, authorID, msgCreatedAtStr, currentTime, currentTime,
-	)
-
-	err = api.PostQuery(query)
-	if err != nil {
-		return fmt.Errorf("メッセージの記録に失敗しました: %w", err)
-	}
-
-	return nil
-}
 
 func (api *CloudflareAPI) findDBID() (string, error) {
 	req, err := http.NewRequest(
