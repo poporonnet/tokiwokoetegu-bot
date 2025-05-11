@@ -71,13 +71,13 @@ type QueryResponse struct {
 // NewCloudflareAPI は CloudflareAPI の新しいインスタンスを作成する
 func NewCloudflareAPI(accountID, email, apiKey, dbName string) (*CloudflareAPI, error) {
 	if accountID == "" {
-		return nil, errors.New("Cloudflare アカウント ID が指定されていません")
+		return nil, errors.New("cloudflare アカウント ID が指定されていません")
 	}
 	if email == "" {
-		return nil, errors.New("Cloudflare メールアドレスが指定されていません")
+		return nil, errors.New("cloudflare メールアドレスが指定されていません")
 	}
 	if apiKey == "" {
-		return nil, errors.New("Cloudflare API キーが指定されていません")
+		return nil, errors.New("cloudflare API キーが指定されていません")
 	}
 	if dbName == "" {
 		return nil, errors.New("データベース名が指定されていません")
@@ -118,7 +118,12 @@ func (api *CloudflareAPI) PostQuery(query string) error {
 	if err != nil {
 		return fmt.Errorf("リクエストの送信に失敗しました: %w", err)
 	}
-	defer res.Body.Close()
+	defer func() {
+		err = res.Body.Close()
+		if err != nil {
+			log.Printf("レスポンスボディのクローズに失敗しました: %v", err)
+		}
+	}()
 
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
@@ -140,7 +145,7 @@ func (api *CloudflareAPI) PostQuery(query string) error {
 func D1Init(apiKey, email, accountID, dbName string) (string, error) {
 	api, err := NewCloudflareAPI(accountID, email, apiKey, dbName)
 	if err != nil {
-		return "", fmt.Errorf("Cloudflare API クライアントの初期化に失敗しました: %w", err)
+		return "", fmt.Errorf("cloudflare API クライアントの初期化に失敗しました: %w", err)
 	}
 
 	// データベース ID を検索
@@ -195,7 +200,6 @@ func D1Init(apiKey, email, accountID, dbName string) (string, error) {
 	return dbID, nil
 }
 
-
 func (api *CloudflareAPI) findDBID() (string, error) {
 	req, err := http.NewRequest(
 		"GET",
@@ -213,7 +217,11 @@ func (api *CloudflareAPI) findDBID() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("リクエストの送信に失敗しました: %w", err)
 	}
-	defer res.Body.Close()
+	defer func() {
+		if err := res.Body.Close(); err != nil {
+			log.Printf("レスポンスボディのクローズに失敗しました: %v", err)
+		}
+	}()
 
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
@@ -260,7 +268,11 @@ func (api *CloudflareAPI) createD1Database() error {
 	if err != nil {
 		return fmt.Errorf("リクエストの送信に失敗しました: %w", err)
 	}
-	defer res.Body.Close()
+	defer func() {
+		if err := res.Body.Close(); err != nil {
+			log.Printf("レスポンスボディのクローズに失敗しました: %v", err)
+		}
+	}()
 
 	body, err := io.ReadAll(res.Body)
 	if err != nil {

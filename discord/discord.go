@@ -13,7 +13,7 @@ import (
 func InitDiscord(config *types.Config) (*discordgo.Session, error) {
 	discord, err := discordgo.New("Bot " + config.DiscordToken)
 	if err != nil {
-		return nil, fmt.Errorf("Discordセッションの作成に失敗しました: %w", err)
+		return nil, fmt.Errorf("discordセッションの作成に失敗しました: %w", err)
 	}
 
 	// イベントハンドラを登録
@@ -23,7 +23,7 @@ func InitDiscord(config *types.Config) (*discordgo.Session, error) {
 
 	err = discord.Open()
 	if err != nil {
-		return nil, fmt.Errorf("Discordへの接続に失敗しました: %w", err)
+		return nil, fmt.Errorf("discordへの接続に失敗しました: %w", err)
 	}
 
 	// コンテキストメニューの登録

@@ -30,9 +30,14 @@ func main() {
 	if err != nil {
 		log.Fatalf("Discordセッションの初期化に失敗しました: %v", err)
 	}
-	defer discord.Close()
+	defer func() {
+		err = discord.Close()
+		if err != nil {
+			log.Printf("Discordセッションのクローズに失敗しました: %v", err)
+		}
+	}()
 
-	fmt.Println("ボットが起動しました。終了するにはCTRL+Cを押してください。")
+	log.Println("ボットが起動しました。終了するにはCTRL+Cを押してください。")
 	select {} // 無限に待機
 }
 

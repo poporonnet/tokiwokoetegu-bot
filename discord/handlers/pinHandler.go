@@ -60,7 +60,7 @@ func HandlePin(s *discordgo.Session, i *discordgo.InteractionCreate, config *typ
 func recordMessage(dbID, apiKey, email, accountID, dbName, messageID, authorID, messageContent, attachmentUrls string, messageCreatedAT time.Time) error {
 	api, err := cloudflare.NewCloudflareAPI(accountID, email, apiKey, dbName)
 	if err != nil {
-		return fmt.Errorf("Cloudflare API クライアントの初期化に失敗しました: %w", err)
+		return fmt.Errorf("cloudflare API クライアントの初期化に失敗しました: %w", err)
 	}
 
 	api.DBID = dbID
