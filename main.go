@@ -11,7 +11,6 @@ import (
 	"github.com/joho/godotenv"
 )
 
-
 func main() {
 	// 設定の読み込み
 	config, err := loadConfig()
