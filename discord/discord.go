@@ -5,8 +5,9 @@ import (
 	"log"
 	"tokiwokoetegu-bot/types"
 
-	"github.com/bwmarrin/discordgo"
 	"tokiwokoetegu-bot/discord/handlers"
+
+	"github.com/bwmarrin/discordgo"
 )
 
 // initDiscord はDiscordセッションを初期化する
@@ -26,10 +27,24 @@ func InitDiscord(config *types.Config) (*discordgo.Session, error) {
 		return nil, fmt.Errorf("discordへの接続に失敗しました: %w", err)
 	}
 
-	// コンテキストメニューの登録
+	// アプリケーションコマンドの登録
+	cmds, err := discord.ApplicationCommands(discord.State.User.ID, config.DiscordGuildID)
+	if err != nil {
+		return nil, fmt.Errorf("コンテキストメニューの取得に失敗しました: %w", err)
+	}
+	for _, cmd := range cmds {
+		if cmd.Name == "pin" {
+			log.Println("コンテキストメニューが既に登録されています")
+			return discord, nil
+		}
+	}
+
+	// コンテキストメニューが登録されていない場合は新規登録
+	log.Println("アプリケーションコマンドが登録されていないため、新規登録します")
+
 	err = registerContextMenu(discord, config.DiscordGuildID)
 	if err != nil {
-		return nil, fmt.Errorf("コンテキストメニューの登録に失敗しました: %w", err)
+		return nil, fmt.Errorf("アプリケーションコマンドーの登録に失敗しました: %w", err)
 	}
 
 	return discord, nil
@@ -70,7 +85,7 @@ func registerContextMenu(s *discordgo.Session, guildID string) error {
 
 	_, err := s.ApplicationCommandCreate(s.State.User.ID, guildID, cmd)
 	if err != nil {
-		return fmt.Errorf("コンテキストメニューの作成に失敗しました: %w", err)
+		return fmt.Errorf("アプリケーションコマンドの作成に失敗しました: %w", err)
 	}
 	return nil
 }
